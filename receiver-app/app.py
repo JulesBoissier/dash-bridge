@@ -42,19 +42,19 @@ app.layout = html.Div([
         html.H3("Controls"),
         html.Div([
             html.Button(
-                "🔄 Force Refresh", 
+                "Force Refresh", 
                 id="refresh-btn", 
                 n_clicks=0,
                 style={"marginRight": "10px", "padding": "10px 20px", "backgroundColor": "#007bff", "color": "white", "border": "none", "borderRadius": "5px", "cursor": "pointer"}
             ),
             html.Button(
-                "📥 Download CSV", 
+                "Download CSV", 
                 id="download-btn", 
                 n_clicks=0,
                 style={"marginRight": "10px", "padding": "10px 20px", "backgroundColor": "#28a745", "color": "white", "border": "none", "borderRadius": "5px", "cursor": "pointer"}
             ),
             html.Button(
-                "🗑️ Clear All Data", 
+                "Clear All Data", 
                 id="clear-btn", 
                 n_clicks=0,
                 style={"padding": "10px 20px", "backgroundColor": "#dc3545", "color": "white", "border": "none", "borderRadius": "5px", "cursor": "pointer"}
@@ -86,13 +86,14 @@ app.layout = html.Div([
     dcc.Download(id="download-csv")
 ])
 
-# Callback to update the grid (responds to both interval and refresh button)
+# Callback to update the grid (responds to interval, refresh button, and clear button)
 @callback(
     Output("user-grid", "rowData"),
     [Input("interval-component", "n_intervals"),
-     Input("refresh-btn", "n_clicks")]
+     Input("refresh-btn", "n_clicks"),
+     Input("clear-btn", "n_clicks")]
 )
-def update_grid(n_intervals, refresh_clicks):
+def update_grid(n_intervals, refresh_clicks, clear_clicks):
     print("Refreshing grid from database")
     return prepare_data_for_grid()
 
@@ -117,9 +118,9 @@ def download_csv(n_clicks):
 def clear_database(n_clicks):
     if n_clicks > 0:
         if clear_all_entries():
-            return "✅ Database cleared successfully!"
+            return "Database cleared successfully!"
         else:
-            return "❌ Failed to clear database"
+            return "Failed to clear database"
     return ""
 
 # Add Flask route for receiving JSON data
