@@ -4,23 +4,17 @@ import dash_ag_grid as dag
 import pandas as pd
 from flask import request, jsonify
 import json
-from datetime import datetime
+
+# Import our custom modules
+from db import init_database, add_entry_to_db
+from utils import prepare_data_for_grid
 
 # Initialize the Dash app
 app = dash.Dash(__name__)
-
 server = app.server
 
-
-# Global data store (in memory)
-data_store = []
-
-# Initialize with some sample data
-sample_data = [
-    {"app_name": "sample_app", "username": "user1", "timestamp": "1640995200000"},
-    {"app_name": "sample_app", "username": "user2", "timestamp": "1640995260000"},
-]
-data_store.extend(sample_data)
+# Initialize database on startup
+init_database()
 
 # Define the AG Grid column definitions
 columnDefs = [
@@ -29,25 +23,6 @@ columnDefs = [
     {"headerName": "Timestamp", "field": "timestamp", "sortable": True, "filter": True},
     {"headerName": "Readable Time", "field": "readable_time", "sortable": True, "filter": True},
 ]
-
-def convert_timestamp_to_readable(timestamp_str):
-    """Convert timestamp to readable format"""
-    try:
-        # Assume timestamp is in milliseconds
-        timestamp = int(timestamp_str) / 1000
-        dt = datetime.fromtimestamp(timestamp)
-        return dt.strftime("%Y-%m-%d %H:%M:%S")
-    except:
-        return "Invalid timestamp"
-
-def prepare_data_for_grid():
-    """Prepare data with readable timestamps"""
-    prepared_data = []
-    for item in data_store:
-        prepared_item = item.copy()
-        prepared_item["readable_time"] = convert_timestamp_to_readable(item["timestamp"])
-        prepared_data.append(prepared_item)
-    return prepared_data
 
 # Define the layout
 app.layout = html.Div([
@@ -71,6 +46,7 @@ app.layout = html.Div([
             dashGridOptions={"pagination": True, "paginationPageSize": 10},
         ),
     ], style={"margin": "20px"}),    
+    
     # Interval component for auto-refresh
     dcc.Interval(
         id="interval-component",
@@ -85,14 +61,12 @@ app.layout = html.Div([
     Input("interval-component", "n_intervals")
 )
 def update_grid(n_intervals):
-    print("Refreshing grid")
-    print(app.config.routes_pathname_prefix + "api/add_entry")
+    print("Refreshing grid from database")
     return prepare_data_for_grid()
 
 # Add Flask route for receiving JSON data
 @app.server.route(app.config.routes_pathname_prefix + "api/add_entry", methods=["POST"])
 def add_entry():
-    print("RECEIVED SOMETHING")
     try:
         # Get JSON data from request
         data = request.get_json()
@@ -101,15 +75,11 @@ def add_entry():
         if not data or "app_name" not in data or "username" not in data or "timestamp" not in data:
             return jsonify({"error": "Missing required fields: app_name, username, timestamp"}), 400
         
-        # Add the entry to data store
-        entry = {
-            "app_name": data["app_name"],
-            "username": data["username"],
-            "timestamp": str(data["timestamp"])
-        }
-        data_store.append(entry)
-        
-        return jsonify({"message": "Entry added successfully", "entry": entry}), 200
+        # Add the entry to database
+        if add_entry_to_db(data["app_name"], data["username"], str(data["timestamp"])):
+            return jsonify({"message": "Entry added successfully"}), 200
+        else:
+            return jsonify({"error": "Failed to add entry to database"}), 500
         
     except Exception as e:
         return jsonify({"error": str(e)}), 500
