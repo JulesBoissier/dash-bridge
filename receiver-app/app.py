@@ -4,87 +4,14 @@ import dash_ag_grid as dag
 import pandas as pd
 from flask import request, jsonify
 import json
-import os
-import psycopg2
-from psycopg2.extras import RealDictCursor
-from datetime import datetime
+
+# Import our custom modules
+from db import init_database, add_entry_to_db
+from utils import prepare_data_for_grid
 
 # Initialize the Dash app
 app = dash.Dash(__name__)
-
 server = app.server
-
-# Database connection
-connection_string = os.environ.get("DATABASE_URL", "postgresql://postgres:docker@127.0.0.1:5432")
-
-def get_db_connection():
-    """Get database connection"""
-    try:
-        conn = psycopg2.connect(connection_string)
-        return conn
-    except Exception as e:
-        print(f"Database connection error: {e}")
-        return None
-
-def init_database():
-    """Initialize database table if it doesn't exist"""
-    conn = get_db_connection()
-    if conn:
-        try:
-            cur = conn.cursor()
-            cur.execute("""
-                CREATE TABLE IF NOT EXISTS user_entries (
-                    id SERIAL PRIMARY KEY,
-                    app_name VARCHAR(255) NOT NULL,
-                    username VARCHAR(255) NOT NULL,
-                    timestamp VARCHAR(50) NOT NULL,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                );
-            """)
-            conn.commit()
-            print("Database table initialized successfully")
-        except Exception as e:
-            print(f"Database initialization error: {e}")
-        finally:
-            cur.close()
-            conn.close()
-
-def get_all_entries():
-    """Get all entries from database"""
-    conn = get_db_connection()
-    if conn:
-        try:
-            cur = conn.cursor(cursor_factory=RealDictCursor)
-            cur.execute("SELECT app_name, username, timestamp FROM user_entries ORDER BY created_at DESC")
-            entries = cur.fetchall()
-            return [dict(entry) for entry in entries]
-        except Exception as e:
-            print(f"Error fetching entries: {e}")
-            return []
-        finally:
-            cur.close()
-            conn.close()
-    return []
-
-def add_entry_to_db(app_name, username, timestamp):
-    """Add entry to database"""
-    conn = get_db_connection()
-    if conn:
-        try:
-            cur = conn.cursor()
-            cur.execute(
-                "INSERT INTO user_entries (app_name, username, timestamp) VALUES (%s, %s, %s)",
-                (app_name, username, timestamp)
-            )
-            conn.commit()
-            return True
-        except Exception as e:
-            print(f"Error adding entry to database: {e}")
-            return False
-        finally:
-            cur.close()
-            conn.close()
-    return False
 
 # Initialize database on startup
 init_database()
@@ -96,26 +23,6 @@ columnDefs = [
     {"headerName": "Timestamp", "field": "timestamp", "sortable": True, "filter": True},
     {"headerName": "Readable Time", "field": "readable_time", "sortable": True, "filter": True},
 ]
-
-def convert_timestamp_to_readable(timestamp_str):
-    """Convert timestamp to readable format"""
-    try:
-        # Assume timestamp is in milliseconds
-        timestamp = int(timestamp_str) / 1000
-        dt = datetime.fromtimestamp(timestamp)
-        return dt.strftime("%Y-%m-%d %H:%M:%S")
-    except:
-        return "Invalid timestamp"
-
-def prepare_data_for_grid():
-    """Prepare data with readable timestamps from database"""
-    entries = get_all_entries()
-    prepared_data = []
-    for item in entries:
-        prepared_item = item.copy()
-        prepared_item["readable_time"] = convert_timestamp_to_readable(item["timestamp"])
-        prepared_data.append(prepared_item)
-    return prepared_data
 
 # Define the layout
 app.layout = html.Div([
@@ -139,6 +46,7 @@ app.layout = html.Div([
             dashGridOptions={"pagination": True, "paginationPageSize": 10},
         ),
     ], style={"margin": "20px"}),    
+    
     # Interval component for auto-refresh
     dcc.Interval(
         id="interval-component",
@@ -159,7 +67,6 @@ def update_grid(n_intervals):
 # Add Flask route for receiving JSON data
 @app.server.route(app.config.routes_pathname_prefix + "api/add_entry", methods=["POST"])
 def add_entry():
-    print("RECEIVED SOMETHING")
     try:
         # Get JSON data from request
         data = request.get_json()
