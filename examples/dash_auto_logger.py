@@ -25,8 +25,6 @@ def get_keycloak_tokens():
         username = os.environ.get("USERNAME")
         password = os.environ.get("PASSWORD")
 
-        print("GOT CREDS")
-
         if not all([DEURL, username, password]):
             raise EnvironmentError("Missing required env variables: DEURL, USERNAME, PASSWORD")
 
@@ -39,11 +37,9 @@ def get_keycloak_tokens():
         )
 
         token_response = keycloak_openid.token(username, password)
-        print("got token")
         access_token = token_response["access_token"]
-        print("parsed token")
         id_token = token_response.get("id_token", access_token)  # Fallback to access_token if no id_token
-        print("got id")
+        
         return {
             "access_token": access_token,
             "id_token": id_token
@@ -67,13 +63,13 @@ def add_auto_logging_feature(app, server_url="https://tam.plotly.host/listener-a
     """
     
     # Add interval component to the existing layout
-    app.layout.children.append(
-        dcc.Interval(
-            id="auto-log-interval",
-            interval=interval_seconds * 1000,
-            n_intervals=0
-        )
+    interval_component = dcc.Interval(
+        id="auto-log-interval",
+        interval=interval_seconds * 1000,
+        n_intervals=0
     )
+    
+    app.layout.children.append(interval_component)
     
     # Add callback for interval-based logging
     @callback(
@@ -149,9 +145,6 @@ def setup_auto_logging(app, **kwargs):
     # Get server URL from environment or use default
     DEURL = os.environ.get("DEURL", "tam.plotly.host")
     default_server_url = f"https://{DEURL}/listener-app"
-
-    print("ADDING AUTO LOGGING")
-    print(DEURL)
     
     # Set up defaults
     config = {

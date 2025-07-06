@@ -49,21 +49,20 @@ app.layout = html.Div([
 def update_demo_output(selected_value):
     return f"You selected: {selected_value}"
 
+# Add auto-logging functionality - THIS RUNS ALWAYS (even with gunicorn!)
+# This will automatically:
+# 1. Add logging components to your app
+# 2. Set up interval-based logging every 5 seconds
+# 3. Use environment variables for configuration
+setup_auto_logging(app, interval_seconds=5)
+
+# You can also customize the behavior:
+# setup_auto_logging(
+#     app,
+#     server_url="http://localhost:8050",  # Custom receiver URL
+#     interval_seconds=5,                  # Log every 5 seconds
+# )
+
 if __name__ == "__main__":
-    # Add auto-logging functionality with just one line!
-    # This will automatically:
-    # 1. Add logging UI components to your app
-    # 2. Set up interval-based logging every 3 seconds
-    # 3. Use environment variables for configuration
-    
-    setup_auto_logging(app, interval_seconds=5)
-    
-    # You can also customize the behavior:
-    # setup_auto_logging(
-    #     app,
-    #     server_url="http://localhost:8050",  # Custom receiver URL
-    #     interval_seconds=5,                  # Log every 5 seconds
-    # )
-    
-    # Run the app
+
     app.run_server(debug=True) 

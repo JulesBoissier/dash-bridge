@@ -1,8 +1,0 @@
---extra-index-url https://tam.plotly.host/packages
-dash==2.14.1
-dash-ag-grid==31.0.1
-pandas==2.1.3
-flask==3.0.0
-dash_enterprise_auth
-python-keycloak==4.7.3
-python-dotenv==1.0.0 
