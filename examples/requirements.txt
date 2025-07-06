@@ -1,0 +1,5 @@
+dash==2.16.1
+python-keycloak==3.9.1
+dash-enterprise-auth
+python-dotenv==1.0.0
+gunicorn
