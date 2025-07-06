@@ -4,9 +4,11 @@ import dash_ag_grid as dag
 import pandas as pd
 from flask import request, jsonify
 import json
+import io
+import base64
 
 # Import our custom modules
-from db import init_database, add_entry_to_db
+from db import init_database, add_entry_to_db, clear_all_entries
 from utils import prepare_data_for_grid
 
 # Initialize the Dash app
@@ -35,6 +37,32 @@ app.layout = html.Div([
         html.Hr(),
     ], style={"margin": "20px", "padding": "20px", "backgroundColor": "#f0f0f0", "borderRadius": "5px"}),
     
+    # Control buttons
+    html.Div([
+        html.H3("Controls"),
+        html.Div([
+            html.Button(
+                "Force Refresh", 
+                id="refresh-btn", 
+                n_clicks=0,
+                style={"marginRight": "10px", "padding": "10px 20px", "backgroundColor": "#007bff", "color": "white", "border": "none", "borderRadius": "5px", "cursor": "pointer"}
+            ),
+            html.Button(
+                "Download CSV", 
+                id="download-btn", 
+                n_clicks=0,
+                style={"marginRight": "10px", "padding": "10px 20px", "backgroundColor": "#28a745", "color": "white", "border": "none", "borderRadius": "5px", "cursor": "pointer"}
+            ),
+            html.Button(
+                "Clear All Data", 
+                id="clear-btn", 
+                n_clicks=0,
+                style={"padding": "10px 20px", "backgroundColor": "#dc3545", "color": "white", "border": "none", "borderRadius": "5px", "cursor": "pointer"}
+            ),
+        ], style={"display": "flex", "gap": "10px"}),
+        html.Div(id="button-output", style={"marginTop": "10px", "color": "green"}),
+    ], style={"margin": "20px", "padding": "20px", "backgroundColor": "#f8f9fa", "borderRadius": "5px"}),
+    
     html.Div([
         html.H3("User Entries"),
         dag.AgGrid(
@@ -50,19 +78,50 @@ app.layout = html.Div([
     # Interval component for auto-refresh
     dcc.Interval(
         id="interval-component",
-        interval=5000,  # Update every 5 seconds
+        interval=10000,  # Update every 10 second
         n_intervals=0
-    )
+    ),
+    
+    # Download component for CSV
+    dcc.Download(id="download-csv")
 ])
 
-# Callback to update the grid
+# Callback to update the grid (responds to interval, refresh button, and clear button)
 @callback(
     Output("user-grid", "rowData"),
-    Input("interval-component", "n_intervals")
+    [Input("interval-component", "n_intervals"),
+     Input("refresh-btn", "n_clicks"),
+     Input("clear-btn", "n_clicks")]
 )
-def update_grid(n_intervals):
+def update_grid(n_intervals, refresh_clicks, clear_clicks):
     print("Refreshing grid from database")
     return prepare_data_for_grid()
+
+# Callback for CSV download
+@callback(
+    Output("download-csv", "data"),
+    Input("download-btn", "n_clicks"),
+    prevent_initial_call=True
+)
+def download_csv(n_clicks):
+    if n_clicks > 0:
+        data = prepare_data_for_grid()
+        df = pd.DataFrame(data)
+        return dcc.send_data_frame(df.to_csv, "user_entries.csv", index=False)
+
+# Callback for clear data button
+@callback(
+    Output("button-output", "children"),
+    Input("clear-btn", "n_clicks"),
+    prevent_initial_call=True
+)
+def clear_database(n_clicks):
+    if n_clicks > 0:
+        if clear_all_entries():
+            return "Database cleared successfully!"
+        else:
+            return "Failed to clear database"
+    return ""
 
 # Add Flask route for receiving JSON data
 @app.server.route(app.config.routes_pathname_prefix + "api/add_entry", methods=["POST"])

@@ -86,4 +86,23 @@ def add_entry_to_db(app_name, username, timestamp):
         finally:
             cur.close()
             conn.close()
+    return False
+
+def clear_all_entries():
+    """Clear all entries from database"""
+    conn = get_db_connection()
+    if conn:
+        try:
+            cur = conn.cursor()
+            cur.execute("DELETE FROM user_entries")
+            conn.commit()
+            rows_affected = cur.rowcount
+            print(f"Cleared {rows_affected} entries from database")
+            return True
+        except Exception as e:
+            print(f"Error clearing database: {e}")
+            return False
+        finally:
+            cur.close()
+            conn.close()
     return False 
